@@ -1,0 +1,18 @@
+import utils
+import torch
+import numpy as np
+
+if __name__ == '__main__':
+    a = 3
+    b = 10
+    c = 10
+    d = 1
+    z, y, x = np.indices((a, b, c))
+    m = np.dstack([x, c - x - 1, y, b - y - 1, a - z - 1])
+    dist = m.min(-1)
+    w = np.minimum(np.float32(dist) / d, 1.0)
+    print(y)
+    print(x)
+    print(m.shape)
+    print(dist)
+    print(w.shape)

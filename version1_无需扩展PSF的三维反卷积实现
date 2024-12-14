@@ -1,0 +1,367 @@
+# main.py
+import cv2
+import numpy as np
+from utils import resize_psf_3d
+import deconvolution_methods as dm
+
+if __name__ == '__main__':
+
+    # region 载入三维图像
+    psf_path = r"psf/psf_virtual2.tif"
+    source_path = r"source/pollen.tif"
+    _, psf = cv2.imreadmulti(psf_path, flags=cv2.IMREAD_UNCHANGED)
+    psf = np.asarray(psf)
+    psf /= psf.sum()
+    _, img = cv2.imreadmulti(source_path, flags=cv2.IMREAD_UNCHANGED)
+    img = np.asarray(img) / 65535
+    if psf.shape != img.shape:
+        psf = resize_psf_3d(img, psf)
+    # endregion
+
+    # region 计算模糊图像
+    img_blur = dm.blur_3d(img, psf, noise_flag=dm.BLUR_ONLY, pad=0, pad_flag=1)
+    # dm.save_tiff_3d(r"231212/blur.tif", tuple(img_blur))
+    # img_gauss = dm.blur_3d(img, psf, noise_flag=dm.BLUR_GAUSS, mean=0, sigma=0.001, pad=0, pad_flag=0)
+    # img_poisson = dm.blur_3d(img, psf, noise_flag=dm.BLUR_POISSON, pad=0, pad_flag=0)
+    # dm.save_tiff_3d(r"result/gauss.tif", tuple(img_gauss))
+    # dm.save_tiff_3d(r"result/poisson.tif", tuple(img_poisson))
+    # img_gp = dm.blur_3d(img, psf, noise_flag=dm.BLUR_GP, mean=0, sigma=0.01, pad=0, pad_flag=1)  # 0.003、0.01
+    # dm.save_tiff_3d(r"231212/blur_gp.tif", tuple(img_gp))
+    # endregion
+
+    # region 逆滤波
+    # img_blur_inv = dm.inverse_3d(img_blur, psf, dm.INV_DIRECT)
+    # img_gauss_inv = dm.inverse_3d(img_gauss, psf, dm.INV_DIRECT)
+    # img_poisson_inv = dm.inverse_3d(img_poisson, psf, dm.INV_DIRECT)
+    # dm.save_tiff_3d(r"result/inverse_blur.tif", tuple(img_blur_inv))
+    # dm.save_tiff_3d(r"result/inverse_gauss.tif", tuple(img_gauss_inv))
+    # dm.save_tiff_3d(r"result/inverse_poisson.tif", tuple(img_poisson_inv))
+    # endregion
+
+    # region 截断逆滤波
+    # img_blur_invcut = dm.inverse_3d(img_blur, psf, dm.INV_CUT, eps=10e-4)
+    # img_gauss_invcut = dm.inverse_3d(img_gauss, psf, dm.INV_CUT, eps=10e-4)
+    # img_poisson_invcut = dm.inverse_3d(img_poisson, psf, dm.INV_CUT, eps=10e-4)
+    # dm.save_tiff_3d(r"result/invcut_blur.tif", tuple(img_blur_invcut))
+    # dm.save_tiff_3d(r"result/invcut_gauss.tif", tuple(img_gauss_invcut))
+    # dm.save_tiff_3d(r"result/invcut_poisson.tif", tuple(img_poisson_invcut))
+    # endregion
+
+    # region 维纳滤波器
+    img_blur_wiener = dm.wiener_3d(img_blur, psf, snr=100, pad=7)
+    dm.save_tiff_3d(r"231212/wiener_blur.tif", tuple(img_blur_wiener))
+    # img_gauss_wiener = dm.wiener_3d(img_gauss, psf, snr=50, pad=13)
+    # img_poisson_wiener = dm.wiener_3d(img_poisson, psf, snr=100, pad=13)
+    # dm.save_tiff_3d(r"result/wiener_gauss.tif", tuple(img_gauss_wiener))
+    # dm.save_tiff_3d(r"result/wiener_poisson.tif", tuple(img_poisson_wiener))
+    # img_poisson_wiener = dm.wiener_3d(img_gp, psf, snr=20, pad=0)
+    # dm.save_tiff_3d(r"231212/wiener_gp2.tif", tuple(img_poisson_wiener))
+    #
+    # 没有进行边缘扩展
+    # img_blur_wiener1 = dm.wiener_3d(img_blur, psf, snr=100)
+    # img_gauss_wiener1 = dm.wiener_3d(img_gauss, psf, snr=50)
+    # img_poisson_wiener1 = dm.wiener_3d(img_poisson, psf, snr=100)
+    # dm.save_tiff_3d(r"result1/wiener_blur.tif", tuple(img_blur_wiener1))
+    # dm.save_tiff_3d(r"result1/wiener_gauss.tif", tuple(img_gauss_wiener1))
+    # dm.save_tiff_3d(r"result1/wiener_poisson.tif", tuple(img_poisson_wiener1))
+    #
+    # endregion
+
+    # region RL
+    # img_blur_rl = dm.rl_3d(img_blur, psf, pad=0, niter=200, eps=1e-5)
+    # dm.save_tiff_3d(r"231212/RL200_blur.tif", tuple(img_blur_rl))
+    # img_gauss_rl = dm.rl_3d(img_gauss, psf, pad=13, niter=30)
+    # img_poisson_rl = dm.rl_3d(img_poisson, psf, pad=13, niter=30)
+    # dm.save_tiff_3d(r"result/RL_gauss.tif", tuple(img_blur_rl))
+    # dm.save_tiff_3d(r"result/RL_poisson.tif", tuple(img_blur_rl))
+    # img_gp_rl = dm.rl_3d(img_gp, psf, pad=0, niter=200, eps=1e-5)
+    # dm.save_tiff_3d(r"231212/RL200_gp.tif", tuple(img_gp_rl))
+    # endregion
+
+    # region RL with large photon flux
+    # img_blur_rl = dm.rl_lp_3d(img_blur, psf, pad=13, niter=50)
+    # img_gauss_rl = dm.rl_lp_3d(img_gauss, psf, pad=13, niter=50)
+    # img_poisson_rl = dm.rl_lp_3d(img_poisson, psf, pad=13, niter=50)
+    # dm.save_tiff_3d(r"result/RL_LP_blur.tif", tuple(img_blur_rl))
+    # dm.save_tiff_3d(r"result/RL_LP_gauss.tif", tuple(img_blur_rl))
+    # dm.save_tiff_3d(r"result/RL_LP_poisson.tif", tuple(img_blur_rl))
+
+# deconvolution_methods.py
+import cv2
+import utils
+import numpy as np
+
+BLUR_ONLY: int = 0
+BLUR_GAUSS: int = 1
+BLUR_POISSON: int = 2
+BLUR_GP: int = 3
+
+PAD_ZERO = utils.PAD_ZERO
+PAD_REFLECT = utils.PAD_REFLECT
+
+INV_DIRECT: int = 0
+INV_CUT: int = 1
+
+
+def convolution_3d(img: np.ndarray, psf: np.ndarray):
+    """
+    3D convolution of clear images with PSF
+    :param img: Clear images
+    :param psf: PSF
+    :return: A blurred 3D image after convolution
+    """
+    otf = np.fft.fftn(psf)
+    otf[np.where(np.abs(otf) < 1e-4)] = 0
+    img_fft = np.fft.fftn(img)
+    img_blur_fft = img_fft * otf
+    img_blur = np.real(np.fft.fftshift(np.fft.ifftn(img_blur_fft)))
+    return img_blur
+
+
+def blur_3d(img: np.ndarray, psf: np.ndarray, noise_flag: int, mean=0, sigma=0.001, pad=0, pad_flag=PAD_ZERO):
+    """
+    Image blur with edge extension (PSF + noise)
+    :param img: Clear images
+    :param psf: PSF
+    :param noise_flag: Types of noise
+        BLUR_ONLY - Noiseless
+        BLUR_GAUSS - Gaussian noise
+        BLUR_POISSON - Poisson noise
+    :param mean: Gaussian noise mean
+    :param sigma: Standard deviation of Gaussian noise
+    :param pad: The number of edge-filled lines
+    :param pad_flag: Padding mode
+        PAD_ZERO - Zero padding
+        PAD_REFLECT - Mirror padding
+    :return: Blurred image
+    """
+    img_pad, psf_pad, padding = utils.pad_3d(img, psf, pad, pad_flag)
+    img_blur = convolution_3d(img_pad, psf_pad)
+
+    if noise_flag == BLUR_GAUSS:
+        noise = np.random.normal(mean, sigma, img_pad.shape)
+        img_blur = img_blur + noise
+        img_blur = np.clip(img_blur, a_min=0, a_max=1)
+
+    elif noise_flag == BLUR_POISSON:
+        vals = len(np.unique(img_blur))
+        vals = 2 ** np.ceil(np.log2(vals))
+        img_blur = np.random.poisson(img_blur * vals) / np.float32(vals)
+
+    elif noise_flag == BLUR_GP:
+        vals = len(np.unique(img_blur))
+        vals = 2 ** np.ceil(np.log2(vals))
+        img_blur = np.random.poisson(img_blur * vals) / np.float32(vals)
+        noise = np.random.normal(mean, sigma, img_pad.shape)
+        img_blur = img_blur + noise
+        img_blur = np.clip(img_blur, a_min=0, a_max=1)
+
+    if img_pad.shape != img.shape:
+        return utils.unpad_3d(img_blur, padding)
+    return img_blur
+
+
+def inverse_3d(img: np.ndarray, psf: np.ndarray, flag: int, eps=10e-2):
+    """
+    Deconvolution with inverse filter
+    :param img: Blurred image
+    :param psf: PSF
+    :param flag: Types of deconvolution
+        INV_DIRECT - naive inverse filter
+        INV_CUT - inverse-cutoff filter
+    :param eps: Cut-off threshold
+    :return: filtered image
+    """
+    otf = np.fft.fftn(psf)
+    img_fft = np.fft.fftn(img)
+    inv_filter = 1 / otf
+    if flag == INV_CUT:
+        inv_filter[np.where(otf < eps)] = 0
+    result_fft = img_fft * inv_filter
+    result = np.real(np.fft.fftshift(np.fft.ifftn(result_fft)))
+    result[np.where(result < 0)] = 0
+    return result
+
+def wiener_3d(img: np.ndarray, psf: np.ndarray, snr=100, pad=0):
+    """
+    Wiener deconvolution with edge extension
+    :param img: Blurred image
+    :param psf: PSF
+    :param snr: Signal-to-noise ratio parameters, set artificially
+    :param pad: The number of edge-filled lines
+    :return: Filtered image
+    """
+    img_pad, psf_pad, padding = utils.pad_3d(img, psf, pad)
+
+    otf = np.fft.fftn(psf_pad)
+    img_fft = np.fft.fftn(img_pad)
+    otf2 = np.abs(otf) ** 2
+    wiener_filter = otf.conjugate() / (otf2 + 1 / snr ** 2)
+    result_fft = img_fft * wiener_filter
+    result = np.real(np.fft.fftshift(np.fft.ifftn(result_fft)))
+    result[np.where(result < 0)] = 0
+
+    if img_pad.shape != img.shape:
+        return utils.unpad_3d(result, padding)
+    return result
+
+def rl_3d(img, psf, pad=0, niter=50, eps=1e-2):
+    """
+    Three-dimensional Richardson-Lucy algorithm
+    :param img: Blurred image
+    :param psf: PSF
+    :param pad: The number of edge-filled lines
+    :param niter: Maximum number of iterations
+    :param eps: Stop-iter threshold
+    :return:
+    """
+    print("start Richardson-Lucy...")
+    img_pad, psf_pad, padding = utils.pad_3d(img, psf / np.sum(psf), pad)
+
+    otf = np.fft.fftn(psf_pad)
+    otf_mirror = np.fft.fftn(np.flip(psf_pad, axis=[0, 1, 2]))
+    result = img_pad.copy()
+
+    for iters in range(niter):
+        result0 = result.copy()
+        result_fft = np.fft.fftn(result)
+        tmp_fft = result_fft * otf
+        tmp = np.real(np.fft.fftshift(np.fft.ifftn(tmp_fft)))
+        tmp = img_pad / tmp
+        tmp_fft = np.fft.fftn(tmp)
+        tmp_fft = tmp_fft * otf_mirror
+        tmp = np.real(np.fft.fftshift(np.fft.ifftn(tmp_fft)))
+        result = result * tmp
+        result[np.where(result < 0)] = 0
+        delta = np.linalg.norm((result - result0).reshape(-1), ord=1) / np.linalg.norm(result0.reshape(-1), ord=1)
+        print("iter:", iters + 1, "delta:", delta)
+        if delta < eps or iters == niter - 1:
+            print("Richardson-Lucy complete at", iters + 1, "th iter!")
+            break
+
+    if img_pad.shape != img.shape:
+        return utils.unpad_3d(result, padding)
+    return result
+
+
+def rl_lp_3d(img, psf, pad=0, niter=50, eps=1e-2):
+    """
+    Three-dimensional Richardson-Lucy algorithm
+    :param img: Blurred image
+    :param psf: PSF
+    :param pad: The number of edge-filled lines
+    :param niter: Maximum number of iterations
+    :param eps: Stop-iter threshold
+    :return:
+    """
+    print("start Richardson-Lucy with Large photon flux...")
+    img_pad, psf_pad, padding = utils.pad_3d(img, psf / np.sum(psf), pad)
+
+    psf_roll = np.fft.fftshift(psf_pad)
+    otf = np.fft.fftn(psf_roll)
+    otf_mirror = np.fft.fftn(np.flip(psf_roll, axis=[0, 1, 2]))
+    img_fft = np.fft.fftn(img_pad)
+    result = img_pad.copy()
+
+    for iters in range(niter):
+        result0 = result.copy()
+        result_fft = np.fft.fftn(result)
+        tmp_fft = result_fft * otf
+        tmp_fft = img_fft - tmp_fft
+        tmp_fft = tmp_fft * otf_mirror
+        tmp = np.real(np.fft.ifftn(tmp_fft))
+        result = result + tmp
+        result[np.where(result < 0)] = 0
+        delta = np.linalg.norm((result - result0).reshape(-1), ord=1) / np.linalg.norm(result0.reshape(-1), ord=1)
+        print("iter:", iters + 1, "delta:", delta)
+        if delta < eps or iters == niter - 1:
+            print("Richardson-Lucy with Large photon flux complete at", iters + 1, "th iter!")
+            break
+
+    if img_pad.shape != img.shape:
+        return utils.unpad_3d(result, padding)
+    return result
+
+
+def cg_3d(img, psf, pad=0, niter=50, eps=1e-2):
+    print("start CG method...")
+    img_pad, psf_pad, padding = utils.pad_3d(img, psf / np.sum(psf), pad)
+
+    otf = np.fft.fftn(psf_pad)
+    result = img_pad.copy()
+
+    img_fft = np.fft.fftn(img_pad)
+    tmp_fft = img_fft * otf
+    tmp = np.real(np.fft.fftshift(np.fft.ifftn(tmp_fft)))
+    r0 = img_pad - tmp
+
+
+def save_tiff_3d(filename, img):
+    stat = cv2.imwritemulti(filename, img)
+    if stat:
+        print("Successfully save", filename, "!")
+        return
+
+# utils.py
+import numpy as np
+
+PAD_ZERO: int = 0
+PAD_REFLECT: int = 1
+
+
+def resize_psf_3d(img: np.ndarray, psf: np.ndarray):
+    """
+    Resize a 3D PSF image to the target image size
+    :param img: Reference image array
+    :param psf: Point Spread Function array to resize
+    :return: the psf array padded to get the same shape as image
+    """
+    kernel = np.zeros(img.shape)
+    x_start = int(img.shape[0] / 2 - psf.shape[0] / 2)
+    y_start = int(img.shape[1] / 2 - psf.shape[1] / 2)
+    z_start = int(img.shape[2] / 2 - psf.shape[2] / 2)
+    kernel[x_start:x_start + psf.shape[0], y_start:y_start + psf.shape[1], z_start:z_start + psf.shape[2]] = psf
+    return kernel
+
+
+def pad_3d(img: np.ndarray, psf: np.ndarray, pad, flag=PAD_REFLECT):
+    """
+    Pad a 3D image and it PSF for deconvolution
+    :param img: Image array
+    :param psf: Point Spread Function array
+    :param pad: The number of edge-filled lines
+    :param flag: Padding mode
+    :return: image, psf, padding: padded versions of the image and the PSF, plus the padding tuple
+    """
+    padding = pad
+    if isinstance(pad, tuple) and len(pad) != img.ndim:
+        raise Exception("Padding must be the same dimension as image")
+    if isinstance(pad, int):
+        if pad == 0:
+            return img, psf, (0, 0, 0)
+        padding = (pad, pad, pad)
+
+    if padding[0] > 0 and padding[1] > 0 and padding[2] > 0:
+        p3d = np.array([padding[0], padding[0], padding[1], padding[1], padding[2], padding[2]])
+        if flag == PAD_REFLECT:
+            img_pad = np.pad(img, p3d.reshape((3, 2)), "reflect")
+        else:
+            img_pad = np.pad(img, p3d.reshape((3, 2)), "constant")
+        psf_pad = np.pad(psf, p3d.reshape((3, 2)), "constant")
+    else:
+        img_pad = img
+        psf_pad = psf
+    return img_pad, psf_pad, padding
+
+
+def unpad_3d(img: np.ndarray, padding: tuple) -> np.ndarray:
+    """
+    Remove the padding of an image
+    :param img: 3D image to unpad
+    :param padding: Padding in each dimension
+    :return: The unpadded image
+    """
+    return img[padding[0]:-padding[0],
+               padding[1]:-padding[1],
+               padding[2]:-padding[2]]
+
